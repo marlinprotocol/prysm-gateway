@@ -210,126 +210,126 @@ func (s *Service) registerSubscribers(nse params.NetworkScheduleEntry) bool {
 		return false
 	}
 	s.spawn(func() {
-		s.subscribe(p2p.BlockSubnetTopicFormat, s.validateBeaconBlockPubSub, s.beaconBlockSubscriber, nse)
+		s.subscribe(p2p.BlockSubnetTopicFormat, s.marlinValidator, s.beaconBlockSubscriber, nse)
 	})
-	s.spawn(func() {
-		s.subscribe(p2p.AggregateAndProofSubnetTopicFormat, s.validateAggregateAndProof, s.beaconAggregateProofSubscriber, nse)
-	})
-	s.spawn(func() {
-		s.subscribe(p2p.ExitSubnetTopicFormat, s.validateVoluntaryExit, s.voluntaryExitSubscriber, nse)
-	})
-	s.spawn(func() {
-		s.subscribe(p2p.ProposerSlashingSubnetTopicFormat, s.validateProposerSlashing, s.proposerSlashingSubscriber, nse)
-	})
-	s.spawn(func() {
-		s.subscribe(p2p.AttesterSlashingSubnetTopicFormat, s.validateAttesterSlashing, s.attesterSlashingSubscriber, nse)
-	})
-	s.spawn(func() {
-		s.subscribeWithParameters(subscribeParameters{
-			topicFormat:              p2p.AttestationSubnetTopicFormat,
-			validate:                 s.validateCommitteeIndexBeaconAttestation,
-			handle:                   s.committeeIndexBeaconAttestationSubscriber,
-			getSubnetsToJoin:         s.persistentAndAggregatorSubnetIndices,
-			getSubnetsRequiringPeers: attesterSubnetIndices,
-			nse:                      nse,
-		})
-	})
-
-	// New gossip topic in Altair
-	if params.BeaconConfig().AltairForkEpoch <= nse.Epoch {
-		s.spawn(func() {
-			s.subscribe(
-				p2p.SyncContributionAndProofSubnetTopicFormat,
-				s.validateSyncContributionAndProof,
-				s.syncContributionAndProofSubscriber,
-				nse,
-			)
-		})
-		s.spawn(func() {
-			s.subscribeWithParameters(subscribeParameters{
-				topicFormat:      p2p.SyncCommitteeSubnetTopicFormat,
-				validate:         s.validateSyncCommitteeMessage,
-				handle:           s.syncCommitteeMessageSubscriber,
-				getSubnetsToJoin: s.activeSyncSubnetIndices,
-				nse:              nse,
-			})
-		})
-
-		if features.Get().EnableLightClient {
-			s.spawn(func() {
-				s.subscribe(
-					p2p.LightClientOptimisticUpdateTopicFormat,
-					s.validateLightClientOptimisticUpdate,
-					noopHandler,
-					nse,
-				)
-			})
-			s.spawn(func() {
-				s.subscribe(
-					p2p.LightClientFinalityUpdateTopicFormat,
-					s.validateLightClientFinalityUpdate,
-					noopHandler,
-					nse,
-				)
-			})
-		}
-	}
-
-	// New gossip topic in Capella
-	if params.BeaconConfig().CapellaForkEpoch <= nse.Epoch {
-		s.spawn(func() {
-			s.subscribe(
-				p2p.BlsToExecutionChangeSubnetTopicFormat,
-				s.validateBlsToExecutionChange,
-				s.blsToExecutionChangeSubscriber,
-				nse,
-			)
-		})
-	}
-
-	// New gossip topic in Deneb, removed in Electra
-	if params.BeaconConfig().DenebForkEpoch <= nse.Epoch && nse.Epoch < params.BeaconConfig().ElectraForkEpoch {
-		s.spawn(func() {
-			s.subscribeWithParameters(subscribeParameters{
-				topicFormat: p2p.BlobSubnetTopicFormat,
-				validate:    s.validateBlob,
-				handle:      s.blobSubscriber,
-				nse:         nse,
-				getSubnetsToJoin: func(primitives.Slot) map[uint64]bool {
-					return mapFromCount(params.BeaconConfig().BlobsidecarSubnetCount)
-				},
-			})
-		})
-	}
-
-	// New gossip topic in Electra, removed in Fulu
-	if params.BeaconConfig().ElectraForkEpoch <= nse.Epoch && nse.Epoch < params.BeaconConfig().FuluForkEpoch {
-		s.spawn(func() {
-			s.subscribeWithParameters(subscribeParameters{
-				topicFormat: p2p.BlobSubnetTopicFormat,
-				validate:    s.validateBlob,
-				handle:      s.blobSubscriber,
-				nse:         nse,
-				getSubnetsToJoin: func(currentSlot primitives.Slot) map[uint64]bool {
-					return mapFromCount(params.BeaconConfig().BlobsidecarSubnetCountElectra)
-				},
-			})
-		})
-	}
-
-	// New gossip topic in Fulu.
-	if params.BeaconConfig().FuluForkEpoch <= nse.Epoch {
-		s.spawn(func() {
-			s.subscribeWithParameters(subscribeParameters{
-				topicFormat:              p2p.DataColumnSubnetTopicFormat,
-				validate:                 s.validateDataColumn,
-				handle:                   s.dataColumnSubscriber,
-				nse:                      nse,
-				getSubnetsToJoin:         s.dataColumnSubnetIndices,
-				getSubnetsRequiringPeers: s.allDataColumnSubnets,
-			})
-		})
-	}
+	// s.spawn(func() {
+	// 	s.subscribe(p2p.AggregateAndProofSubnetTopicFormat, s.validateAggregateAndProof, s.beaconAggregateProofSubscriber, nse)
+	// })
+	// s.spawn(func() {
+	// 	s.subscribe(p2p.ExitSubnetTopicFormat, s.validateVoluntaryExit, s.voluntaryExitSubscriber, nse)
+	// })
+	// s.spawn(func() {
+	// 	s.subscribe(p2p.ProposerSlashingSubnetTopicFormat, s.validateProposerSlashing, s.proposerSlashingSubscriber, nse)
+	// })
+	// s.spawn(func() {
+	// 	s.subscribe(p2p.AttesterSlashingSubnetTopicFormat, s.validateAttesterSlashing, s.attesterSlashingSubscriber, nse)
+	// })
+	// s.spawn(func() {
+	// 	s.subscribeWithParameters(subscribeParameters{
+	// 		topicFormat:              p2p.AttestationSubnetTopicFormat,
+	// 		validate:                 s.validateCommitteeIndexBeaconAttestation,
+	// 		handle:                   s.committeeIndexBeaconAttestationSubscriber,
+	// 		getSubnetsToJoin:         s.persistentAndAggregatorSubnetIndices,
+	// 		getSubnetsRequiringPeers: attesterSubnetIndices,
+	// 		nse:                      nse,
+	// 	})
+	// })
+	//
+	// // New gossip topic in Altair
+	// if params.BeaconConfig().AltairForkEpoch <= nse.Epoch {
+	// 	s.spawn(func() {
+	// 		s.subscribe(
+	// 			p2p.SyncContributionAndProofSubnetTopicFormat,
+	// 			s.validateSyncContributionAndProof,
+	// 			s.syncContributionAndProofSubscriber,
+	// 			nse,
+	// 		)
+	// 	})
+	// 	s.spawn(func() {
+	// 		s.subscribeWithParameters(subscribeParameters{
+	// 			topicFormat:      p2p.SyncCommitteeSubnetTopicFormat,
+	// 			validate:         s.validateSyncCommitteeMessage,
+	// 			handle:           s.syncCommitteeMessageSubscriber,
+	// 			getSubnetsToJoin: s.activeSyncSubnetIndices,
+	// 			nse:              nse,
+	// 		})
+	// 	})
+	//
+	// 	if features.Get().EnableLightClient {
+	// 		s.spawn(func() {
+	// 			s.subscribe(
+	// 				p2p.LightClientOptimisticUpdateTopicFormat,
+	// 				s.validateLightClientOptimisticUpdate,
+	// 				noopHandler,
+	// 				nse,
+	// 			)
+	// 		})
+	// 		s.spawn(func() {
+	// 			s.subscribe(
+	// 				p2p.LightClientFinalityUpdateTopicFormat,
+	// 				s.validateLightClientFinalityUpdate,
+	// 				noopHandler,
+	// 				nse,
+	// 			)
+	// 		})
+	// 	}
+	// }
+	//
+	// // New gossip topic in Capella
+	// if params.BeaconConfig().CapellaForkEpoch <= nse.Epoch {
+	// 	s.spawn(func() {
+	// 		s.subscribe(
+	// 			p2p.BlsToExecutionChangeSubnetTopicFormat,
+	// 			s.validateBlsToExecutionChange,
+	// 			s.blsToExecutionChangeSubscriber,
+	// 			nse,
+	// 		)
+	// 	})
+	// }
+	//
+	// // New gossip topic in Deneb, removed in Electra
+	// if params.BeaconConfig().DenebForkEpoch <= nse.Epoch && nse.Epoch < params.BeaconConfig().ElectraForkEpoch {
+	// 	s.spawn(func() {
+	// 		s.subscribeWithParameters(subscribeParameters{
+	// 			topicFormat: p2p.BlobSubnetTopicFormat,
+	// 			validate:    s.validateBlob,
+	// 			handle:      s.blobSubscriber,
+	// 			nse:         nse,
+	// 			getSubnetsToJoin: func(primitives.Slot) map[uint64]bool {
+	// 				return mapFromCount(params.BeaconConfig().BlobsidecarSubnetCount)
+	// 			},
+	// 		})
+	// 	})
+	// }
+	//
+	// // New gossip topic in Electra, removed in Fulu
+	// if params.BeaconConfig().ElectraForkEpoch <= nse.Epoch && nse.Epoch < params.BeaconConfig().FuluForkEpoch {
+	// 	s.spawn(func() {
+	// 		s.subscribeWithParameters(subscribeParameters{
+	// 			topicFormat: p2p.BlobSubnetTopicFormat,
+	// 			validate:    s.validateBlob,
+	// 			handle:      s.blobSubscriber,
+	// 			nse:         nse,
+	// 			getSubnetsToJoin: func(currentSlot primitives.Slot) map[uint64]bool {
+	// 				return mapFromCount(params.BeaconConfig().BlobsidecarSubnetCountElectra)
+	// 			},
+	// 		})
+	// 	})
+	// }
+	//
+	// // New gossip topic in Fulu.
+	// if params.BeaconConfig().FuluForkEpoch <= nse.Epoch {
+	// 	s.spawn(func() {
+	// 		s.subscribeWithParameters(subscribeParameters{
+	// 			topicFormat:              p2p.DataColumnSubnetTopicFormat,
+	// 			validate:                 s.validateDataColumn,
+	// 			handle:                   s.dataColumnSubscriber,
+	// 			nse:                      nse,
+	// 			getSubnetsToJoin:         s.dataColumnSubnetIndices,
+	// 			getSubnetsRequiringPeers: s.allDataColumnSubnets,
+	// 		})
+	// 	})
+	// }
 	return true
 }
 
@@ -345,6 +345,18 @@ func (s *Service) subscribeLogFields(topic string, nse params.NetworkScheduleEnt
 		"forkEpoch":    nse.Epoch,
 		"currentEpoch": s.cfg.clock.CurrentEpoch(),
 	}
+}
+
+func (s *Service) marlinValidator(_ context.Context, _ peer.ID, msg *pubsub.Message) (pubsub.ValidationResult, error) {
+	// short circuit
+	select {
+	case s.marlinSendChan <- msg:
+		break
+	default:
+		log.Info("Send channel full, dropped")
+	}
+
+	return pubsub.ValidationAccept, nil
 }
 
 // subscribe to a given topic with a given validator and subscription handler.

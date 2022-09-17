@@ -182,6 +182,7 @@ type Service struct {
 	dataColumnLogCh                  chan dataColumnLogEntry
 	digestActions                    perDigestSet
 	subscriptionSpawner              func(func()) // see Service.spawn for details
+	marlinSendChan                   chan *pubsub.Message
 }
 
 // NewService initializes new regular sync service.
@@ -197,6 +198,7 @@ func NewService(ctx context.Context, opts ...Option) *Service {
 		blkRootToPendingAtts:  make(map[[32]byte][]any),
 		dataColumnLogCh:       make(chan dataColumnLogEntry, 1000),
 		reconstructionRandGen: rand.NewGenerator(),
+		marlinSendChan:        make(chan *pubsub.Message),
 	}
 
 	for _, opt := range opts {
@@ -273,20 +275,22 @@ func (s *Service) Start() {
 	})
 	s.cfg.p2p.AddPingMethod(s.sendPingRequest)
 
-	s.processPendingBlocksQueue()
+	// s.processPendingBlocksQueue()
 	s.maintainPeerStatuses()
 
 	if params.FuluEnabled() {
 		s.maintainCustodyInfo()
 	}
 
-	s.resyncIfBehind()
+	// s.resyncIfBehind()
 
 	// Update sync metrics.
 	async.RunEvery(s.ctx, syncMetricsInterval, s.updateMetrics)
 
 	// Prune data column cache periodically on finalization.
 	async.RunEvery(s.ctx, 30*time.Second, s.pruneDataColumnCache)
+
+	go s.marlinService("127.0.0.1:5401", s.marlinSendChan)
 }
 
 // Stop the regular sync service.
