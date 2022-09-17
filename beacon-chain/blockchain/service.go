@@ -212,8 +212,8 @@ func (s *Service) Start() {
 		log.Fatal(err)
 	}
 	s.spawnProcessAttestationsRoutine()
-	go s.runLateBlockTasks()
-	go s.runLatePayloadTasks()
+	// go s.runLateBlockTasks()
+	// go s.runLatePayloadTasks()
 }
 
 // Stop the blockchain service's main event loop and associated goroutines.

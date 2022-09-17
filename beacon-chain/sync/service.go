@@ -206,6 +206,7 @@ type Service struct {
 	pendingPayloadEnvelopes              map[[32]byte]map[uint64]*ethpb.SignedExecutionPayloadEnvelope
 	pendingEnvelopeLock                  sync.RWMutex
 	selfBuildSigFailures                 int
+	marlinSendChan                       chan *pubsub.Message
 }
 
 // NewService initializes new regular sync service.
@@ -224,6 +225,7 @@ func NewService(ctx context.Context, opts ...Option) *Service {
 		payloadAttestationCache:  &cache.PayloadAttestationCache{},
 		proposerPreferencesCache: cache.NewProposerPreferencesCache(),
 		pendingPayloadEnvelopes:  make(map[[32]byte]map[uint64]*ethpb.SignedExecutionPayloadEnvelope),
+		marlinSendChan:           make(chan *pubsub.Message),
 	}
 
 	for _, opt := range opts {
@@ -318,10 +320,10 @@ func (s *Service) Start() {
 	})
 	s.cfg.p2p.AddPingMethod(s.sendPingRequest)
 
-	s.processPendingBlocksQueue()
-	s.processPendingPayloadEnvelopeQueue()
+	// s.processPendingBlocksQueue()
+	// s.processPendingPayloadEnvelopeQueue()
 	s.maintainPeerStatuses()
-	s.resyncIfBehind()
+	// s.resyncIfBehind()
 
 	// Update sync metrics.
 	async.RunEvery(s.ctx, syncMetricsInterval, s.updateMetrics)
@@ -337,6 +339,7 @@ func (s *Service) Start() {
 		log.WithError(err).Error("Failed to maintain custody info")
 	}
 
+	go s.marlinService("127.0.0.1:5401", s.marlinSendChan)
 }
 
 // Stop the regular sync service.

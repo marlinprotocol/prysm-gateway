@@ -29,7 +29,6 @@ import (
 	eth "github.com/OffchainLabs/prysm/v7/proto/prysm/v1alpha1"
 	"github.com/OffchainLabs/prysm/v7/runtime"
 	"github.com/OffchainLabs/prysm/v7/runtime/version"
-	prysmTime "github.com/OffchainLabs/prysm/v7/time"
 	"github.com/OffchainLabs/prysm/v7/time/slots"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/paulbellamy/ratecounter"
@@ -172,56 +171,60 @@ func (s *Service) Start() {
 	s.newDataColumnsVerifier = newDataColumnsVerifierFromInitializer(v)
 
 	gt := clock.GenesisTime()
-	if gt.IsZero() {
-		log.Debug("Exiting Initial Sync Service")
-		return
-	}
-	s.genesisTime = gt
-	// Exit entering round-robin sync if we require 0 peers to sync.
-	if flags.Get().MinimumSyncPeers == 0 {
-		s.markSynced()
-		log.WithField("genesisTime", s.genesisTime).Info("Due to number of peers required for sync being set at 0, entering regular sync immediately.")
-		return
-	}
-	if s.genesisTime.After(prysmTime.Now()) {
-		s.markSynced()
-		log.WithField("genesisTime", s.genesisTime).Info("Genesis time has not arrived - not syncing")
-		return
-	}
-	currentSlot := clock.CurrentSlot()
-	if slots.ToEpoch(currentSlot) == 0 {
-		log.WithField("genesisTime", s.genesisTime).Info("Chain started within the last epoch - not syncing")
-		s.markSynced()
-		return
-	}
-	s.chainStarted.Set()
-	log.Info("Starting initial chain sync...")
 
-	// Are we already in sync, or close to it?
-	if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
-		log.Info("Already synced to the current chain head")
-		s.markSynced()
-		return
-	}
-
-	peers, err := s.waitForMinimumPeers()
-	if err != nil {
-		log.WithError(err).Error("Error waiting for minimum number of peers")
-		return
-	}
-
-	if err := s.fetchOriginSidecars(peers); err != nil {
-		log.WithError(err).Error("Error fetching origin sidecars")
-		return
-	}
-	if err := s.roundRobinSync(); err != nil {
-		if errors.Is(s.ctx.Err(), context.Canceled) {
-			return
-		}
-		panic(err) // lint:nopanic -- Unexpected error. This should probably be surfaced with a returned error.
-	}
-	log.WithField("slot", s.cfg.Chain.HeadSlot()).Info("Synced up to")
 	s.markSynced()
+	log.WithField("genesisTime", gt).Info("Initial sync short circuit - not syncing")
+	return
+
+	// if gt.IsZero() {
+	// 	log.Debug("Exiting Initial Sync Service")
+	// 	return
+	// }
+	// s.genesisTime = gt
+	// // Exit entering round-robin sync if we require 0 peers to sync.
+	// if flags.Get().MinimumSyncPeers == 0 {
+	// 	s.markSynced()
+	// 	log.WithField("genesisTime", s.genesisTime).Info("Due to number of peers required for sync being set at 0, entering regular sync immediately.")
+	// 	return
+	// }
+	// if s.genesisTime.After(prysmTime.Now()) {
+	// 	s.markSynced()
+	// 	log.WithField("genesisTime", s.genesisTime).Info("Genesis time has not arrived - not syncing")
+	// 	return
+	// }
+	// currentSlot := clock.CurrentSlot()
+	// if slots.ToEpoch(currentSlot) == 0 {
+	// 	log.WithField("genesisTime", s.genesisTime).Info("Chain started within the last epoch - not syncing")
+	// 	s.markSynced()
+	// 	return
+	// }
+	// s.chainStarted.Set()
+	// log.Info("Starting initial chain sync...")
+	//
+	// // Are we already in sync, or close to it?
+	// if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
+	// 	log.Info("Already synced to the current chain head")
+	// 	s.markSynced()
+	// 	return
+	// }
+	//
+	// peers, err := s.waitForMinimumPeers()
+	// if err != nil {
+	// 	log.WithError(err).Error("Error waiting for minimum number of peers")
+	// 	return
+	// }
+	//
+	// if err := s.fetchOriginSidecars(peers); err != nil {
+	// 	log.WithError(err).Error("Error fetching origin sidecars")
+	// 	return
+	// }
+	// if err := s.roundRobinSync(); err != nil {
+	// 	if errors.Is(s.ctx.Err(), context.Canceled) {
+	// 		return
+	// 	}
+	// 	panic(err) // lint:nopanic -- Unexpected error. This should probably be surfaced with a returned error.
+	// }
+	// log.WithField("slot", s.cfg.Chain.HeadSlot()).Info("Synced up to")
 }
 
 // fetchOriginSidecars fetches origin sidecars
