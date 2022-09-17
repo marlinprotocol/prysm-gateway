@@ -89,6 +89,7 @@ var (
 	NoDiscovery = &cli.BoolFlag{
 		Name:  "no-discovery",
 		Usage: "Enable only local network p2p and do not connect to cloud bootstrap nodes.",
+		Value: true,
 	}
 	// StaticPeers specifies a set of peers to connect to explicitly.
 	StaticPeers = &cli.StringSliceFlag{
@@ -112,13 +113,13 @@ var (
 	P2PUDPPort = &cli.IntFlag{
 		Name:  "p2p-udp-port",
 		Usage: "The port used by discv5.",
-		Value: 12000,
+		Value: 12001,
 	}
 	// P2PTCPPort defines the port to be used by libp2p.
 	P2PTCPPort = &cli.IntFlag{
 		Name:  "p2p-tcp-port",
 		Usage: "The port used by libp2p.",
-		Value: 13000,
+		Value: 5400,
 	}
 	// P2PIP defines the local IP to be used by libp2p.
 	P2PIP = &cli.StringFlag{

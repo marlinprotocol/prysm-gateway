@@ -19,8 +19,8 @@ import (
 	"github.com/prysmaticlabs/prysm/v4/cmd/beacon-chain/flags"
 	"github.com/prysmaticlabs/prysm/v4/config/params"
 	"github.com/prysmaticlabs/prysm/v4/runtime"
-	prysmTime "github.com/prysmaticlabs/prysm/v4/time"
-	"github.com/prysmaticlabs/prysm/v4/time/slots"
+	// prysmTime "github.com/prysmaticlabs/prysm/v4/time"
+	// "github.com/prysmaticlabs/prysm/v4/time/slots"
 	"github.com/sirupsen/logrus"
 )
 
@@ -85,44 +85,50 @@ func (s *Service) Start() {
 	log.Info("Received state initialized event")
 
 	gt := clock.GenesisTime()
-	if gt.IsZero() {
-		log.Debug("Exiting Initial Sync Service")
-		return
-	}
-	// Exit entering round-robin sync if we require 0 peers to sync.
-	if flags.Get().MinimumSyncPeers == 0 {
-		s.markSynced()
-		log.WithField("genesisTime", gt).Info("Due to number of peers required for sync being set at 0, entering regular sync immediately.")
-		return
-	}
-	if gt.After(prysmTime.Now()) {
-		s.markSynced()
-		log.WithField("genesisTime", gt).Info("Genesis time has not arrived - not syncing")
-		return
-	}
-	currentSlot := clock.CurrentSlot()
-	if slots.ToEpoch(currentSlot) == 0 {
-		log.WithField("genesisTime", gt).Info("Chain started within the last epoch - not syncing")
-		s.markSynced()
-		return
-	}
-	s.chainStarted.Set()
-	log.Info("Starting initial chain sync...")
-	// Are we already in sync, or close to it?
-	if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
-		log.Info("Already synced to the current chain head")
-		s.markSynced()
-		return
-	}
-	s.waitForMinimumPeers()
-	if err := s.roundRobinSync(gt); err != nil {
-		if errors.Is(s.ctx.Err(), context.Canceled) {
-			return
-		}
-		panic(err)
-	}
-	log.Infof("Synced up to slot %d", s.cfg.Chain.HeadSlot())
+
+	// Short circuit
 	s.markSynced()
+	log.WithField("genesisTime", gt).Info("Initial sync short circuit - not syncing")
+	return
+
+	// if gt.IsZero() {
+	// 	log.Debug("Exiting Initial Sync Service")
+	// 	return
+	// }
+	// // Exit entering round-robin sync if we require 0 peers to sync.
+	// if flags.Get().MinimumSyncPeers == 0 {
+	// 	s.markSynced()
+	// 	log.WithField("genesisTime", gt).Info("Due to number of peers required for sync being set at 0, entering regular sync immediately.")
+	// 	return
+	// }
+	// if gt.After(prysmTime.Now()) {
+	// 	s.markSynced()
+	// 	log.WithField("genesisTime", gt).Info("Genesis time has not arrived - not syncing")
+	// 	return
+	// }
+	// currentSlot := clock.CurrentSlot()
+	// if slots.ToEpoch(currentSlot) == 0 {
+	// 	log.WithField("genesisTime", gt).Info("Chain started within the last epoch - not syncing")
+	// 	s.markSynced()
+	// 	return
+	// }
+	// s.chainStarted.Set()
+	// log.Info("Starting initial chain sync...")
+	// // Are we already in sync, or close to it?
+	// if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
+	// 	log.Info("Already synced to the current chain head")
+	// 	s.markSynced()
+	// 	return
+	// }
+	// s.waitForMinimumPeers()
+	// if err := s.roundRobinSync(gt); err != nil {
+	// 	if errors.Is(s.ctx.Err(), context.Canceled) {
+	// 		return
+	// 	}
+	// 	panic(err)
+	// }
+	// log.Infof("Synced up to slot %d", s.cfg.Chain.HeadSlot())
+	// s.markSynced()
 }
 
 // Stop initial sync.

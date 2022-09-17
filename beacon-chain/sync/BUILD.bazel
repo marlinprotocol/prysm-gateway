@@ -14,6 +14,7 @@ go_library(
         "fork_watcher.go",
         "fuzz_exports.go",  # keep
         "log.go",
+        "marlin.go",
         "metrics.go",
         "options.go",
         "pending_attestations_queue.go",
