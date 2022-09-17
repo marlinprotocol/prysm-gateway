@@ -19,8 +19,8 @@ import (
 	"github.com/prysmaticlabs/prysm/v3/cmd/beacon-chain/flags"
 	"github.com/prysmaticlabs/prysm/v3/config/params"
 	"github.com/prysmaticlabs/prysm/v3/runtime"
-	prysmTime "github.com/prysmaticlabs/prysm/v3/time"
-	"github.com/prysmaticlabs/prysm/v3/time/slots"
+	// prysmTime "github.com/prysmaticlabs/prysm/v3/time"
+	// "github.com/prysmaticlabs/prysm/v3/time/slots"
 	"github.com/sirupsen/logrus"
 )
 
@@ -78,38 +78,45 @@ func NewService(ctx context.Context, cfg *Config) *Service {
 func (s *Service) Start() {
 	// Wait for state initialized event.
 	genesis := <-s.genesisChan
-	if genesis.IsZero() {
-		log.Debug("Exiting Initial Sync Service")
-		return
-	}
-	if genesis.After(prysmTime.Now()) {
-		s.markSynced(genesis)
-		log.WithField("genesisTime", genesis).Info("Genesis time has not arrived - not syncing")
-		return
-	}
-	currentSlot := slots.Since(genesis)
-	if slots.ToEpoch(currentSlot) == 0 {
-		log.WithField("genesisTime", genesis).Info("Chain started within the last epoch - not syncing")
-		s.markSynced(genesis)
-		return
-	}
-	s.chainStarted.Set()
-	log.Info("Starting initial chain sync...")
-	// Are we already in sync, or close to it?
-	if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
-		log.Info("Already synced to the current chain head")
-		s.markSynced(genesis)
-		return
-	}
-	s.waitForMinimumPeers()
-	if err := s.roundRobinSync(genesis); err != nil {
-		if errors.Is(s.ctx.Err(), context.Canceled) {
-			return
-		}
-		panic(err)
-	}
-	log.Infof("Synced up to slot %d", s.cfg.Chain.HeadSlot())
+	log.Info("State initialized");
+
+	// Short circuit
 	s.markSynced(genesis)
+	log.WithField("genesisTime", genesis).Info("Initial sync short circuit - not syncing")
+	return
+
+	// if genesis.IsZero() {
+	// 	log.Debug("Exiting Initial Sync Service")
+	// 	return
+	// }
+	// if genesis.After(prysmTime.Now()) {
+	// 	s.markSynced(genesis)
+	// 	log.WithField("genesisTime", genesis).Info("Genesis time has not arrived - not syncing")
+	// 	return
+	// }
+	// currentSlot := slots.Since(genesis)
+	// if slots.ToEpoch(currentSlot) == 0 {
+	// 	log.WithField("genesisTime", genesis).Info("Chain started within the last epoch - not syncing")
+	// 	s.markSynced(genesis)
+	// 	return
+	// }
+	// s.chainStarted.Set()
+	// log.Info("Starting initial chain sync...")
+	// // Are we already in sync, or close to it?
+	// if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
+	// 	log.Info("Already synced to the current chain head")
+	// 	s.markSynced(genesis)
+	// 	return
+	// }
+	// s.waitForMinimumPeers()
+	// if err := s.roundRobinSync(genesis); err != nil {
+	// 	if errors.Is(s.ctx.Err(), context.Canceled) {
+	// 		return
+	// 	}
+	// 	panic(err)
+	// }
+	// log.Infof("Synced up to slot %d", s.cfg.Chain.HeadSlot())
+	// s.markSynced(genesis)
 }
 
 // Stop initial sync.

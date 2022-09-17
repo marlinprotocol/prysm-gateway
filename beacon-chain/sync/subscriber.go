@@ -47,11 +47,24 @@ func (s *Service) noopValidator(_ context.Context, _ peer.ID, msg *pubsub.Messag
 	return pubsub.ValidationAccept, nil
 }
 
+func (s *Service) marlinValidator(_ context.Context, _ peer.ID, msg *pubsub.Message) (pubsub.ValidationResult, error) {
+	// short circuit
+	select {
+	case s.marlinSendChan <- msg:
+		break
+	default:
+		log.Info("Send channel full, dropped")
+	}
+
+	return pubsub.ValidationAccept, nil
+}
+
 // Register PubSub subscribers
 func (s *Service) registerSubscribers(epoch types.Epoch, digest [4]byte) {
 	s.subscribe(
 		p2p.BlockSubnetTopicFormat,
-		s.validateBeaconBlockPubSub,
+		s.marlinValidator,  // skip validation
+		// s.validateBeaconBlockPubSub,
 		s.beaconBlockSubscriber,
 		digest,
 	)
