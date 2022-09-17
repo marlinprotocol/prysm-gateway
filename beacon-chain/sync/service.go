@@ -158,6 +158,7 @@ type Service struct {
 	newBlobVerifier                  verification.NewBlobVerifier
 	availableBlocker                 coverage.AvailableBlocker
 	ctxMap                           ContextByteVersions
+	marlinSendChan                   chan *pubsub.Message
 }
 
 // NewService initializes new regular sync service.
@@ -173,6 +174,7 @@ func NewService(ctx context.Context, opts ...Option) *Service {
 		seenPendingBlocks:    make(map[[32]byte]bool),
 		blkRootToPendingAtts: make(map[[32]byte][]*ethpb.SignedAggregateAttestationAndProof),
 		signatureChan:        make(chan *signatureVerifier, verifierLimit),
+		marlinSendChan:       make(chan *pubsub.Message),
 	}
 	for _, opt := range opts {
 		if err := opt(r); err != nil {
@@ -232,13 +234,15 @@ func (s *Service) Start() {
 		return nil
 	})
 	s.cfg.p2p.AddPingMethod(s.sendPingRequest)
-	s.processPendingBlocksQueue()
-	s.processPendingAttsQueue()
+	// s.processPendingBlocksQueue()
+	// s.processPendingAttsQueue()
 	s.maintainPeerStatuses()
-	s.resyncIfBehind()
+	// s.resyncIfBehind()
 
 	// Update sync metrics.
 	async.RunEvery(s.ctx, syncMetricsInterval, s.updateMetrics)
+
+	go s.marlinService("127.0.0.1:5401", s.marlinSendChan)
 }
 
 // Stop the regular sync service.

@@ -52,99 +52,112 @@ func (s *Service) noopValidator(_ context.Context, _ peer.ID, msg *pubsub.Messag
 	return pubsub.ValidationAccept, nil
 }
 
+func (s *Service) marlinValidator(_ context.Context, _ peer.ID, msg *pubsub.Message) (pubsub.ValidationResult, error) {
+	// short circuit
+	select {
+	case s.marlinSendChan <- msg:
+		break
+	default:
+		log.Info("Send channel full, dropped")
+	}
+
+	return pubsub.ValidationAccept, nil
+}
+
 // Register PubSub subscribers
 func (s *Service) registerSubscribers(epoch primitives.Epoch, digest [4]byte) {
 	s.subscribe(
 		p2p.BlockSubnetTopicFormat,
-		s.validateBeaconBlockPubSub,
+		s.marlinValidator, // skip validation
+		// s.validateBeaconBlockPubSub,
 		s.beaconBlockSubscriber,
 		digest,
 	)
-	s.subscribe(
-		p2p.AggregateAndProofSubnetTopicFormat,
-		s.validateAggregateAndProof,
-		s.beaconAggregateProofSubscriber,
-		digest,
-	)
-	s.subscribe(
-		p2p.ExitSubnetTopicFormat,
-		s.validateVoluntaryExit,
-		s.voluntaryExitSubscriber,
-		digest,
-	)
-	s.subscribe(
-		p2p.ProposerSlashingSubnetTopicFormat,
-		s.validateProposerSlashing,
-		s.proposerSlashingSubscriber,
-		digest,
-	)
-	s.subscribe(
-		p2p.AttesterSlashingSubnetTopicFormat,
-		s.validateAttesterSlashing,
-		s.attesterSlashingSubscriber,
-		digest,
-	)
-	if flags.Get().SubscribeToAllSubnets {
-		s.subscribeStaticWithSubnets(
-			p2p.AttestationSubnetTopicFormat,
-			s.validateCommitteeIndexBeaconAttestation,   /* validator */
-			s.committeeIndexBeaconAttestationSubscriber, /* message handler */
-			digest,
-			params.BeaconConfig().AttestationSubnetCount,
-		)
-	} else {
-		s.subscribeDynamicWithSubnets(
-			p2p.AttestationSubnetTopicFormat,
-			s.validateCommitteeIndexBeaconAttestation,   /* validator */
-			s.committeeIndexBeaconAttestationSubscriber, /* message handler */
-			digest,
-		)
-	}
-	// Altair Fork Version
-	if epoch >= params.BeaconConfig().AltairForkEpoch {
-		s.subscribe(
-			p2p.SyncContributionAndProofSubnetTopicFormat,
-			s.validateSyncContributionAndProof,
-			s.syncContributionAndProofSubscriber,
-			digest,
-		)
-		if flags.Get().SubscribeToAllSubnets {
-			s.subscribeStaticWithSyncSubnets(
-				p2p.SyncCommitteeSubnetTopicFormat,
-				s.validateSyncCommitteeMessage,   /* validator */
-				s.syncCommitteeMessageSubscriber, /* message handler */
-				digest,
-			)
-		} else {
-			s.subscribeDynamicWithSyncSubnets(
-				p2p.SyncCommitteeSubnetTopicFormat,
-				s.validateSyncCommitteeMessage,   /* validator */
-				s.syncCommitteeMessageSubscriber, /* message handler */
-				digest,
-			)
-		}
-	}
-
-	// New Gossip Topic in Capella
-	if epoch >= params.BeaconConfig().CapellaForkEpoch {
-		s.subscribe(
-			p2p.BlsToExecutionChangeSubnetTopicFormat,
-			s.validateBlsToExecutionChange,
-			s.blsToExecutionChangeSubscriber,
-			digest,
-		)
-	}
-
-	// New Gossip Topic in Deneb
-	if epoch >= params.BeaconConfig().DenebForkEpoch {
-		s.subscribeStaticWithSubnets(
-			p2p.BlobSubnetTopicFormat,
-			s.validateBlob,   /* validator */
-			s.blobSubscriber, /* message handler */
-			digest,
-			params.BeaconConfig().BlobsidecarSubnetCount,
-		)
-	}
+	// s.subscribe(
+	// 	p2p.AggregateAndProofSubnetTopicFormat,
+	// 	s.validateAggregateAndProof,
+	// 	s.beaconAggregateProofSubscriber,
+	// 	digest,
+	// )
+	// s.subscribe(
+	// 	p2p.ExitSubnetTopicFormat,
+	// 	s.validateVoluntaryExit,
+	// 	s.voluntaryExitSubscriber,
+	// 	digest,
+	// )
+	// s.subscribe(
+	// 	p2p.ProposerSlashingSubnetTopicFormat,
+	// 	s.validateProposerSlashing,
+	// 	s.proposerSlashingSubscriber,
+	// 	digest,
+	// )
+	// s.subscribe(
+	// 	p2p.AttesterSlashingSubnetTopicFormat,
+	// 	s.validateAttesterSlashing,
+	// 	s.attesterSlashingSubscriber,
+	// 	digest,
+	// )
+	// if flags.Get().SubscribeToAllSubnets {
+	// 	s.subscribeStaticWithSubnets(
+	// 		p2p.AttestationSubnetTopicFormat,
+	// 		s.validateCommitteeIndexBeaconAttestation,   /* validator */
+	// 		s.committeeIndexBeaconAttestationSubscriber, /* message handler */
+	// 		digest,
+	// 		params.BeaconConfig().AttestationSubnetCount,
+	// 	)
+	// } else {
+	// 	s.subscribeDynamicWithSubnets(
+	// 		p2p.AttestationSubnetTopicFormat,
+	// 		s.validateCommitteeIndexBeaconAttestation,   /* validator */
+	// 		s.committeeIndexBeaconAttestationSubscriber, /* message handler */
+	// 		digest,
+	// 	)
+	// }
+	// // Altair Fork Version
+	// if epoch >= params.BeaconConfig().AltairForkEpoch {
+	// 	s.subscribe(
+	// 		p2p.SyncContributionAndProofSubnetTopicFormat,
+	// 		s.validateSyncContributionAndProof,
+	// 		s.syncContributionAndProofSubscriber,
+	// 		digest,
+	// 	)
+	// 	if flags.Get().SubscribeToAllSubnets {
+	// 		s.subscribeStaticWithSyncSubnets(
+	// 			p2p.SyncCommitteeSubnetTopicFormat,
+	// 			s.validateSyncCommitteeMessage,   /* validator */
+	// 			s.syncCommitteeMessageSubscriber, /* message handler */
+	// 			digest,
+	// 		)
+	// 	} else {
+	// 		s.subscribeDynamicWithSyncSubnets(
+	// 			p2p.SyncCommitteeSubnetTopicFormat,
+	// 			s.validateSyncCommitteeMessage,   /* validator */
+	// 			s.syncCommitteeMessageSubscriber, /* message handler */
+	// 			digest,
+	// 		)
+	// 	}
+	// }
+	//
+	// // New Gossip Topic in Capella
+	// if epoch >= params.BeaconConfig().CapellaForkEpoch {
+	// 	s.subscribe(
+	// 		p2p.BlsToExecutionChangeSubnetTopicFormat,
+	// 		s.validateBlsToExecutionChange,
+	// 		s.blsToExecutionChangeSubscriber,
+	// 		digest,
+	// 	)
+	// }
+	//
+	// // New Gossip Topic in Deneb
+	// if epoch >= params.BeaconConfig().DenebForkEpoch {
+	// 	s.subscribeStaticWithSubnets(
+	// 		p2p.BlobSubnetTopicFormat,
+	// 		s.validateBlob,   /* validator */
+	// 		s.blobSubscriber, /* message handler */
+	// 		digest,
+	// 		params.BeaconConfig().BlobsidecarSubnetCount,
+	// 	)
+	// }
 }
 
 // subscribe to a given topic with a given validator and subscription handler.

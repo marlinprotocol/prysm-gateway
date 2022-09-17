@@ -30,8 +30,8 @@ import (
 	eth "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/runtime"
 	"github.com/prysmaticlabs/prysm/v5/runtime/version"
-	prysmTime "github.com/prysmaticlabs/prysm/v5/time"
-	"github.com/prysmaticlabs/prysm/v5/time/slots"
+	// prysmTime "github.com/prysmaticlabs/prysm/v5/time"
+	// "github.com/prysmaticlabs/prysm/v5/time/slots"
 	"github.com/sirupsen/logrus"
 )
 
@@ -150,52 +150,57 @@ func (s *Service) Start() {
 	s.newBlobVerifier = newBlobVerifierFromInitializer(v)
 
 	gt := clock.GenesisTime()
-	if gt.IsZero() {
-		log.Debug("Exiting Initial Sync Service")
-		return
-	}
-	// Exit entering round-robin sync if we require 0 peers to sync.
-	if flags.Get().MinimumSyncPeers == 0 {
-		s.markSynced()
-		log.WithField("genesisTime", gt).Info("Due to number of peers required for sync being set at 0, entering regular sync immediately.")
-		return
-	}
-	if gt.After(prysmTime.Now()) {
-		s.markSynced()
-		log.WithField("genesisTime", gt).Info("Genesis time has not arrived - not syncing")
-		return
-	}
-	currentSlot := clock.CurrentSlot()
-	if slots.ToEpoch(currentSlot) == 0 {
-		log.WithField("genesisTime", gt).Info("Chain started within the last epoch - not syncing")
-		s.markSynced()
-		return
-	}
-	s.chainStarted.Set()
-	log.Info("Starting initial chain sync...")
-	// Are we already in sync, or close to it?
-	if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
-		log.Info("Already synced to the current chain head")
-		s.markSynced()
-		return
-	}
-	peers, err := s.waitForMinimumPeers()
-	if err != nil {
-		log.WithError(err).Error("Error waiting for minimum number of peers")
-		return
-	}
-	if err := s.fetchOriginBlobs(peers); err != nil {
-		log.WithError(err).Error("Failed to fetch missing blobs for checkpoint origin")
-		return
-	}
-	if err := s.roundRobinSync(gt); err != nil {
-		if errors.Is(s.ctx.Err(), context.Canceled) {
-			return
-		}
-		panic(err)
-	}
-	log.Infof("Synced up to slot %d", s.cfg.Chain.HeadSlot())
+	
 	s.markSynced()
+	log.WithField("genesisTime", gt).Info("Initial sync short circuit - not syncing")
+	return
+
+	// if gt.IsZero() {
+	// 	log.Debug("Exiting Initial Sync Service")
+	// 	return
+	// }
+	// // Exit entering round-robin sync if we require 0 peers to sync.
+	// if flags.Get().MinimumSyncPeers == 0 {
+	// 	s.markSynced()
+	// 	log.WithField("genesisTime", gt).Info("Due to number of peers required for sync being set at 0, entering regular sync immediately.")
+	// 	return
+	// }
+	// if gt.After(prysmTime.Now()) {
+	// 	s.markSynced()
+	// 	log.WithField("genesisTime", gt).Info("Genesis time has not arrived - not syncing")
+	// 	return
+	// }
+	// currentSlot := clock.CurrentSlot()
+	// if slots.ToEpoch(currentSlot) == 0 {
+	// 	log.WithField("genesisTime", gt).Info("Chain started within the last epoch - not syncing")
+	// 	s.markSynced()
+	// 	return
+	// }
+	// s.chainStarted.Set()
+	// log.Info("Starting initial chain sync...")
+	// // Are we already in sync, or close to it?
+	// if slots.ToEpoch(s.cfg.Chain.HeadSlot()) == slots.ToEpoch(currentSlot) {
+	// 	log.Info("Already synced to the current chain head")
+	// 	s.markSynced()
+	// 	return
+	// }
+	// peers, err := s.waitForMinimumPeers()
+	// if err != nil {
+	// 	log.WithError(err).Error("Error waiting for minimum number of peers")
+	// 	return
+	// }
+	// if err := s.fetchOriginBlobs(peers); err != nil {
+	// 	log.WithError(err).Error("Failed to fetch missing blobs for checkpoint origin")
+	// 	return
+	// }
+	// if err := s.roundRobinSync(gt); err != nil {
+	// 	if errors.Is(s.ctx.Err(), context.Canceled) {
+	// 		return
+	// 	}
+	// 	panic(err)
+	// }
+	// log.Infof("Synced up to slot %d", s.cfg.Chain.HeadSlot())
+	// s.markSynced()
 }
 
 // Stop initial sync.
