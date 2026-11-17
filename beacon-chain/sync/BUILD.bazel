@@ -191,6 +191,7 @@ go_test(
         "error_test.go",
         "fork_watcher_test.go",
         "kzg_batch_verifier_test.go",
+        "marlin_test.go",
         "once_test.go",
         "pending_attestations_queue_bucket_test.go",
         "pending_attestations_queue_test.go",
